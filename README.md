@@ -231,3 +231,6 @@ While the author is an employee of Google Japan, this software is not Google's p
 The copyright of this software belongs to me as I have requested it using the 
 [IARC process](https://opensource.google/docs/iarc/). However, Google might claim the rights to the intellectual
 property of this invention.
+
+The code is released under the [MIT license](https://github.com/pkhungurn/talking-head-anime-2-demo/blob/master/LICENSE).
+The model is released under the [Creative Commons Attribution 4.0 International License](https://creativecommons.org/licenses/by/4.0/legalcode).
