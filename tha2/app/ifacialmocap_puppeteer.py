@@ -474,12 +474,14 @@ class MainFrame(wx.Frame):
                 message_dialog.Destroy()
         file_dialog.Destroy()
 
-if __name__ == "__main__":
-    cuda = torch.device('cuda')
-    import tha2.poser.modes.mode_20
 
+if __name__ == "__main__":
+    import tha2.poser.modes.mode_20
+    import tha2.poser.modes.mode_20_wx
+
+    cuda = torch.device('cuda')
     poser = tha2.poser.modes.mode_20.create_poser(cuda)
-    pose_converter = tha2.poser.modes.mode_20.create_ifacialmocap_pose_converter()
+    pose_converter = tha2.poser.modes.mode_20_wx.create_ifacialmocap_pose_converter()
 
     app = wx.App()
     main_frame = MainFrame(poser, pose_converter, cuda)
