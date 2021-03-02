@@ -8,6 +8,11 @@ project. Similar to the [previous version](http://github.com/dragonmeteor/talkin
     and a [Jupyter notebook](https://jupyter.org/).
   * The `ifacialmocap_puppeteer` lets you transfer your facial motion, captured by a commercial iOS application 
     called [iFacialMocap](http://www.ifacialmocap.com), to an image of an anime character.
+
+## Try the Manual Poser on Google Colab
+
+If you do not have the required hardware (discussed below) or do not want to download the code and set up an environment to run it, click [![this link](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pkhungurn/talking-head-anime-2-demo/blob/master/colab.ipynb) to try running the manual poser on [Google Colab](https://research.google.com/colaboratory/faq.html).
+
     
 ## Hardware Requirements
 
