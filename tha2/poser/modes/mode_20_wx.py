@@ -11,14 +11,6 @@ from tha2.mocap.ifacialmocap_pose_converter import IFacialMocapPoseConverter
 from tha2.poser.modes.mode_20 import get_pose_parameters
 
 
-def rad_to_deg(rad):
-    return rad * 180.0 / math.pi
-
-
-def deg_to_rad(deg):
-    return deg * math.pi / 180.0
-
-
 def clamp(x, min_value, max_value):
     return max(min_value, min(max_value, x))
 
@@ -133,13 +125,8 @@ class IFacialMocapPoseConverter20(IFacialMocapPoseConverter):
         smile_value = \
             (ifacialmocap_pose[MOUTH_SMILE_LEFT] + ifacialmocap_pose[MOUTH_SMILE_RIGHT]) / 2.0 \
             + ifacialmocap_pose[MOUTH_SHRUG_UPPER]
-        if smile_value < self.args.lower_smile_threshold:
-            smile_degree = 0.0
-        elif smile_value > self.args.upper_smile_threshold:
-            smile_degree = 1.0
-        else:
-            smile_degree = (smile_value - self.args.lower_smile_threshold) / (
-                    self.args.upper_smile_threshold - self.args.lower_smile_threshold)
+        smile_degree = clamp((smile_value - self.args.lower_smile_threshold) / (
+                self.args.upper_smile_threshold - self.args.lower_smile_threshold), 0.0, 1.0)
 
         # Eyebrow
         if True:
@@ -213,7 +200,7 @@ class IFacialMocapPoseConverter20(IFacialMocapPoseConverter):
             eye_rotation_y = (ifacialmocap_pose[EYE_LOOK_IN_LEFT] -
                               ifacialmocap_pose[EYE_LOOK_OUT_LEFT] -
                               ifacialmocap_pose[EYE_LOOK_IN_RIGHT] +
-                              ifacialmocap_pose[EYE_LOOK_IN_RIGHT]) / 2.0 * self.args.eye_rotation_factor
+                              ifacialmocap_pose[EYE_LOOK_OUT_RIGHT]) / 2.0 * self.args.eye_rotation_factor
             pose[self.iris_rotation_y_index] = clamp(eye_rotation_y, -1.0, 1.0)
 
             eye_rotation_x = (ifacialmocap_pose[EYE_LOOK_UP_LEFT]
