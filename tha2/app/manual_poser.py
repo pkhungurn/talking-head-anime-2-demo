@@ -264,9 +264,14 @@ class MainFrame(wx.Frame):
             image_file_name = os.path.join(file_dialog.GetDirectory(), file_dialog.GetFilename())
             try:
                 pil_image = resize_PIL_image(extract_PIL_image_from_filelike(image_file_name))
-                w, h = pil_image.size
-                self.wx_source_image = wx.Bitmap.FromBufferRGBA(w, h, pil_image.convert("RGBA").tobytes())
-                self.torch_source_image = extract_pytorch_image_from_PIL_image(pil_image).to(self.device)
+                w, h, c = pil_image.size
+                if c != 4:
+                    self.source_image_string = "Image must have alpha channel!"
+                    self.wx_source_image = None
+                    self.torch_source_image = None
+                else:
+                    self.wx_source_image = wx.Bitmap.FromBufferRGBA(w, h, pil_image.convert("RGBA").tobytes())
+                    self.torch_source_image = extract_pytorch_image_from_PIL_image(pil_image).to(self.device)
 
                 self.Refresh()
             except:
