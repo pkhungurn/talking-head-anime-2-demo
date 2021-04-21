@@ -392,6 +392,20 @@ class MainFrame(wx.Frame):
         output_index = self.output_index_choice.GetSelection()
         output_image = self.poser.pose(self.torch_source_image, pose, output_index)[0].detach().cpu()
         numpy_image = convert_output_image_from_torch_to_numpy(output_image)
+
+        background_choice = self.output_background_choice.GetSelection()
+        if background_choice != 0:
+            background = numpy.zeros((numpy_image.shape[0], numpy_image.shape[1], numpy_image.shape[2]))
+            background[:, :, 3] = 1.0
+            if background_choice == 1:
+                background[:, :, 1] = 1.0
+            elif background_choice == 2:
+                background[:, :, 2] = 1.0
+            elif background_choice == 4:
+                background[:, :, 0:3] = 1.0
+            numpy_image = self.blend_with_background(numpy_image, background)
+
+        numpy_image = numpy.uint8(numpy.rint(numpy_image * 255.0))
         wx_image = wx.ImageFromBuffer(
             numpy_image.shape[0],
             numpy_image.shape[1],
@@ -421,9 +435,14 @@ class MainFrame(wx.Frame):
             image_file_name = os.path.join(file_dialog.GetDirectory(), file_dialog.GetFilename())
             try:
                 pil_image = resize_PIL_image(extract_PIL_image_from_filelike(image_file_name))
-                w, h = pil_image.size
-                self.wx_source_image = wx.Bitmap.FromBufferRGBA(w, h, pil_image.convert("RGBA").tobytes())
-                self.torch_source_image = extract_pytorch_image_from_PIL_image(pil_image).to(self.device)
+                w, h, c = pil_image.size
+                if c != 4:
+                    self.source_image_string = "Image must have alpha channel!"
+                    self.wx_source_image = None
+                    self.torch_source_image = None
+                else:
+                    self.wx_source_image = wx.Bitmap.FromBufferRGBA(w, h, pil_image.convert("RGBA").tobytes())
+                    self.torch_source_image = extract_pytorch_image_from_PIL_image(pil_image).to(self.device)
 
                 self.Refresh()
             except:

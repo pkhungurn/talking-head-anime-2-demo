@@ -139,7 +139,7 @@ def rgba_to_numpy_image(torch_image: Tensor, min_pixel_value=-1.0, max_pixel_val
 
 def extract_PIL_image_from_filelike(file):
     try:
-        pil_image = PIL.Image.open(file).convert("RGBA")
+        pil_image = PIL.Image.open(file)
     except Exception as e:
         raise RuntimeError(file)
     return pil_image
@@ -214,5 +214,4 @@ def convert_output_image_from_torch_to_numpy(output_image):
         numpy_image = grid_change_to_numpy_image(output_image, num_channels=4)
     else:
         raise RuntimeError("Unsupported # image channels: %d" % output_image.shape[0])
-    numpy_image = numpy.uint8(numpy.rint(numpy_image * 255.0))
     return numpy_image

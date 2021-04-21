@@ -321,7 +321,7 @@ class MainFrame(wx.Frame):
         pose = torch.tensor(current_pose, device=self.device)
         output_index = self.output_index_choice.GetSelection()
         output_image = self.poser.pose(self.torch_source_image, pose, output_index)[0].detach().cpu()
-        numpy_image = convert_output_image_from_torch_to_numpy(output_image)
+        numpy_image = numpy.uint8(numpy.rint(convert_output_image_from_torch_to_numpy(output_image) * 255.0))
         self.last_output_numpy_image = numpy_image
         wx_image = wx.ImageFromBuffer(
             numpy_image.shape[0],
