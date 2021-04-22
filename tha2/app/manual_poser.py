@@ -5,6 +5,7 @@ from typing import List
 
 sys.path.append(os.getcwd())
 
+import numpy
 import torch
 import wx
 import PIL.Image
@@ -264,8 +265,8 @@ class MainFrame(wx.Frame):
             image_file_name = os.path.join(file_dialog.GetDirectory(), file_dialog.GetFilename())
             try:
                 pil_image = resize_PIL_image(extract_PIL_image_from_filelike(image_file_name))
-                w, h, c = pil_image.size
-                if c != 4:
+                w, h = pil_image.size
+                if pil_image.mode != 'RGBA':
                     self.source_image_string = "Image must have alpha channel!"
                     self.wx_source_image = None
                     self.torch_source_image = None
