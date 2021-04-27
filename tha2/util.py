@@ -137,34 +137,36 @@ def rgba_to_numpy_image(torch_image: Tensor, min_pixel_value=-1.0, max_pixel_val
     return rgba_image
 
 
-def extract_pytorch_image_from_filelike(file, scale=2.0, offset=-1.0):
+def extract_PIL_image_from_filelike(file):
     try:
         pil_image = PIL.Image.open(file)
     except Exception as e:
         raise RuntimeError(file)
-    return extract_pytorch_image_from_PIL_image(pil_image, scale, offset)
+    return pil_image
+
+
+def extract_pytorch_image_from_filelike(file, scale=2.0, offset=-1.0):
+    return extract_pytorch_image_from_PIL_image(extract_PIL_image_from_filelike(file), scale, offset)
 
 
 def extract_pytorch_image_from_PIL_image(pil_image, scale=2.0, offset=-1.0):
-    image = numpy.asarray(pil_image) / 255.0
+    image = extract_numpy_image_from_PIL_image(pil_image)
     h, w, c = image.shape
-    image[:, :, 0:3] = srgb_to_linear(image[:, :, 0:3])
-    image = image \
-        .reshape(h * w, c) \
-        .transpose() \
-        .reshape(c, h, w)
+    image = image.reshape(h * w, c)
+    for pixel in image:
+        if pixel[3] == 0.0:
+            pixel[0:3] = 0.0
+    image = image.transpose().reshape(c, h, w)
     torch_image = torch.from_numpy(image).float() * scale + offset
     return torch_image
 
 
 def extract_numpy_image_from_filelike(file):
-    pil_image = PIL.Image.open(file)
-    image_width = pil_image.width
-    image_height = pil_image.height
-    if pil_image.mode == "RGBA":
-        image = (numpy.asarray(pil_image) / 255.0).reshape(image_height, image_width, 4)
-    else:
-        image = (numpy.asarray(pil_image) / 255.0).reshape(image_height, image_width, 3)
+    return extract_numpy_image_from_PIL_image(extract_PIL_image_from_filelike(file))
+
+
+def extract_numpy_image_from_PIL_image(pil_image):
+    image = numpy.asarray(pil_image) / 255.0
     image[:, :, 0:3] = srgb_to_linear(image[:, :, 0:3])
     return image
 
@@ -176,6 +178,13 @@ def create_parent_dir(file_name):
 def run_command(command_parts: List[str]):
     command = " ".join(command_parts)
     os.system(command)
+
+
+def resize_PIL_image(pil_image, size=(256, 256)):
+    w, h = pil_image.size
+    d = min(w, h)
+    r = ((w - d) // 2, (h - d) // 2, (w + d) // 2, (h + d) // 2)
+    return pil_image.resize(size, resample=PIL.Image.LANCZOS, box=r)
 
 
 def save_pytorch_image(image, file_name):
@@ -205,5 +214,4 @@ def convert_output_image_from_torch_to_numpy(output_image):
         numpy_image = grid_change_to_numpy_image(output_image, num_channels=4)
     else:
         raise RuntimeError("Unsupported # image channels: %d" % output_image.shape[0])
-    numpy_image = numpy.uint8(numpy.rint(numpy_image * 255.0))
     return numpy_image

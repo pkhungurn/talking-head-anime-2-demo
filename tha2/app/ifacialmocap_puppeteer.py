@@ -15,7 +15,7 @@ import wx
 from tha2.poser.poser import Poser
 from tha2.mocap.ifacialmocap_constants import *
 from tha2.mocap.ifacialmocap_pose_converter import IFacialMocapPoseConverter
-from tha2.util import extract_pytorch_image_from_filelike, rgba_to_numpy_image, grid_change_to_numpy_image
+from tha2.util import extract_PIL_image_from_filelike, resize_PIL_image, extract_pytorch_image_from_PIL_image, convert_output_image_from_torch_to_numpy
 
 
 class CaptureData:
@@ -370,7 +370,7 @@ class MainFrame(wx.Frame):
         dc.DrawText(self.source_image_string, 128 - w // 2, 128 - h // 2)
 
     def paint_result_image_panel(self, event: wx.Event):
-        self.update_result_image_panel(event)
+        self.last_pose = None
 
     def update_result_image_panel(self, event: wx.Event):
         tic = time.perf_counter()
@@ -391,41 +391,26 @@ class MainFrame(wx.Frame):
         pose = torch.tensor(current_pose, device=self.device)
         output_index = self.output_index_choice.GetSelection()
         output_image = self.poser.pose(self.torch_source_image, pose, output_index)[0].detach().cpu()
-
-        if output_image.shape[0] == 4:
-            numpy_image = rgba_to_numpy_image(output_image)
-        elif output_image.shape[0] == 1:
-            c, h, w = output_image.shape
-            alpha_image = torch.cat([output_image.repeat(3, 1, 1) * 2.0 - 1.0, torch.ones(1, h, w)], dim=0)
-            numpy_image = rgba_to_numpy_image(alpha_image)
-        elif output_image.shape[0] == 2:
-            numpy_image = grid_change_to_numpy_image(output_image, num_channels=4)
-        else:
-            raise RuntimeError("Unsupported # image channels: " + output_image.shape[0])
+        numpy_image = convert_output_image_from_torch_to_numpy(output_image)
 
         background_choice = self.output_background_choice.GetSelection()
-        if background_choice == 0:
-            pass
-        else:
+        if background_choice != 0:
             background = numpy.zeros((numpy_image.shape[0], numpy_image.shape[1], numpy_image.shape[2]))
             background[:, :, 3] = 1.0
             if background_choice == 1:
                 background[:, :, 1] = 1.0
-                numpy_image = self.blend_with_background(numpy_image, background)
             elif background_choice == 2:
                 background[:, :, 2] = 1.0
-                numpy_image = self.blend_with_background(numpy_image, background)
-            elif background_choice == 3:
-                numpy_image = self.blend_with_background(numpy_image, background)
-            else:
+            elif background_choice == 4:
                 background[:, :, 0:3] = 1.0
-                numpy_image = self.blend_with_background(numpy_image, background)
+            numpy_image = self.blend_with_background(numpy_image, background)
 
         numpy_image = numpy.uint8(numpy.rint(numpy_image * 255.0))
-        wx_image = wx.ImageFromBuffer(numpy_image.shape[0],
-                                      numpy_image.shape[1],
-                                      numpy_image[:, :, 0:3].tobytes(),
-                                      numpy_image[:, :, 3].tobytes())
+        wx_image = wx.ImageFromBuffer(
+            numpy_image.shape[0],
+            numpy_image.shape[1],
+            numpy_image[:, :, 0:3].tobytes(),
+            numpy_image[:, :, 3].tobytes())
         wx_bitmap = wx_image.ConvertToBitmap()
 
         dc = wx.ClientDC(self.result_image_panel)
@@ -449,23 +434,15 @@ class MainFrame(wx.Frame):
         if file_dialog.ShowModal() == wx.ID_OK:
             image_file_name = os.path.join(file_dialog.GetDirectory(), file_dialog.GetFilename())
             try:
-                wx_bitmap = wx.Bitmap(image_file_name)
-                image = extract_pytorch_image_from_filelike(
-                    image_file_name, scale=2.0, offset=-1.0).to(self.device)
-
-                c, h, w = image.shape
-                if c != 4 or h != 256 or w != 256:
-                    self.torch_source_image = None
-                    self.wx_source_image = None
-                else:
-                    self.wx_source_image = wx_bitmap
-                    self.torch_source_image = image
-                if c != 4:
+                pil_image = resize_PIL_image(extract_PIL_image_from_filelike(image_file_name))
+                w, h = pil_image.size
+                if pil_image.mode != 'RGBA':
                     self.source_image_string = "Image must have alpha channel!"
-                if w != 256:
-                    self.source_image_string = "Image width must be 256!"
-                if h != 256:
-                    self.source_image_string = "Image height must be 256!"
+                    self.wx_source_image = None
+                    self.torch_source_image = None
+                else:
+                    self.wx_source_image = wx.Bitmap.FromBufferRGBA(w, h, pil_image.convert("RGBA").tobytes())
+                    self.torch_source_image = extract_pytorch_image_from_PIL_image(pil_image).to(self.device)
 
                 self.Refresh()
             except:

@@ -5,12 +5,13 @@ from typing import List
 
 sys.path.append(os.getcwd())
 
+import numpy
 import torch
 import wx
 import PIL.Image
 
 from tha2.poser.poser import Poser, PoseParameterCategory, PoseParameterGroup
-from tha2.util import extract_pytorch_image_from_filelike, convert_output_image_from_torch_to_numpy
+from tha2.util import extract_PIL_image_from_filelike, resize_PIL_image, extract_pytorch_image_from_PIL_image, convert_output_image_from_torch_to_numpy
 
 
 class MorphCategoryControlPanel(wx.Panel):
@@ -146,7 +147,7 @@ class MainFrame(wx.Frame):
         self.timer = wx.Timer(self, wx.ID_ANY)
         self.Bind(wx.EVT_TIMER, self.update_result_image_panel, self.timer)
 
-        save_image_id = wx.NewId()
+        save_image_id = wx.NewIdRef()
         self.Bind(wx.EVT_MENU, self.on_save_image, id=save_image_id)
         accelerator_table = wx.AcceleratorTable([
             (wx.ACCEL_CTRL, ord('S'), save_image_id)
@@ -263,23 +264,15 @@ class MainFrame(wx.Frame):
         if file_dialog.ShowModal() == wx.ID_OK:
             image_file_name = os.path.join(file_dialog.GetDirectory(), file_dialog.GetFilename())
             try:
-                wx_bitmap = wx.Bitmap(image_file_name)
-                image = extract_pytorch_image_from_filelike(
-                    image_file_name, scale=2.0, offset=-1.0).to(self.device)
-
-                c, h, w = image.shape
-                if c != 4 or h != 256 or w != 256:
-                    self.torch_source_image = None
-                    self.wx_source_image = None
-                else:
-                    self.wx_source_image = wx_bitmap
-                    self.torch_source_image = image
-                if c != 4:
+                pil_image = resize_PIL_image(extract_PIL_image_from_filelike(image_file_name))
+                w, h = pil_image.size
+                if pil_image.mode != 'RGBA':
                     self.source_image_string = "Image must have alpha channel!"
-                if w != 256:
-                    self.source_image_string = "Image width must be 256!"
-                if h != 256:
-                    self.source_image_string = "Image height must be 256!"
+                    self.wx_source_image = None
+                    self.torch_source_image = None
+                else:
+                    self.wx_source_image = wx.Bitmap.FromBufferRGBA(w, h, pil_image.convert("RGBA").tobytes())
+                    self.torch_source_image = extract_pytorch_image_from_PIL_image(pil_image).to(self.device)
 
                 self.Refresh()
             except:
@@ -334,7 +327,7 @@ class MainFrame(wx.Frame):
         pose = torch.tensor(current_pose, device=self.device)
         output_index = self.output_index_choice.GetSelection()
         output_image = self.poser.pose(self.torch_source_image, pose, output_index)[0].detach().cpu()
-        numpy_image = convert_output_image_from_torch_to_numpy(output_image)
+        numpy_image = numpy.uint8(numpy.rint(convert_output_image_from_torch_to_numpy(output_image) * 255.0))
         self.last_output_numpy_image = numpy_image
         wx_image = wx.ImageFromBuffer(
             numpy_image.shape[0],
@@ -353,7 +346,7 @@ class MainFrame(wx.Frame):
             return
 
         dir_name = "data/illust"
-        file_dialog = wx.FileDialog(self, "Choose an image", dir_name, "", "*.png", wx.FD_SAVE)
+        file_dialog = wx.FileDialog(self, "Save image", dir_name, "", "*.png", wx.FD_SAVE)
         if file_dialog.ShowModal() == wx.ID_OK:
             image_file_name = os.path.join(file_dialog.GetDirectory(), file_dialog.GetFilename())
             try:
