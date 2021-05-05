@@ -182,52 +182,13 @@ If all is well, load an character image, and it should follow your facial moveme
 
 In order for the model to work well, the input image must obey the following constraints:
 
-  * It must be of size 256 x 256.
-  * It must be of PNG format.
   * It must have an alpha channel.
   * It must contain only one humanoid anime character.
   * The character must be looking straight ahead.
   * The head of the character should be roughly contained in the middle 128 x 128 box.
-  * All pixels that do not belong to the character (i.e., background pixels) should have RGBA = (0,0,0,0).
+  * All pixels that do not belong to the character (i.e., background pixels) should have the alpha channel (A) being 0.
 
-![Image specification](docs/image_specification.png "You should see the progress bars moving.")
-
-### FAQ: I prepared an image just like you said, why is my output so ugly?!?
-
-This is most likely because your image does not obey the "background RGBA = (0,0,0,0)" constraint. In other words,
-your background pixels are (RRR,GGG,BBB,0) for some RRR, GGG, BBB > 0 rather than (0,0,0,0). This happens when you 
-use Photoshop because it does not clear the RGB channels of transparent pixels.
-
-Let's see an example. When I tried to use the `manual_poser` with `data/illust/waifu_06_buggy.png`. Here's what I got.
-
-![A failure case](docs/failure_case.png "A failure case.")
-
-When you look at the image, there seems to be nothing wrong with it.
-
-![waifu_06_buggy.png](data/illust/waifu_06_buggy.png "waifu_06_buggy.png")
-
-However, if you inspect it with [GIMP](https://www.gimp.org/), you will see that the RGB channels have what backgrounds,
-which means that those pixels have non-zero RGB values.
-
-![In the buggy image, background pixels have colors in the RGB channels.](docs/failure_case_channels.png "In the buggy image, background pixels have colors in the RGB channels.")
-
-What you want, instead, is something like the non-buggy version: `data/illust/waifu_06.png`, which looks exactly the
-same as the buggy one to the naked eyes.
-
-![waifu_06.png](data/illust/waifu_06.png "waifu_06.png")
-
-However, in GIMP, all channels have black backgrounds.
-
-![In the good image, background pixels do not have colors in any channels.](docs/success_case_channels.png "In the good image, background pixels do not have colors in any channels.")
-
-Because of this, the output was clean.
-
-![A success case](docs/success_case.png "A success case.")
-
-A way to make sure that your image works well with the model is to prepare it with GIMP. When exporting your image to
-the PNG format, make sure to uncheck "Save color values from transparent pixels" before you hit "Export."
-
-![Make sure to uncheck 'Save color values from transparent pixels' before exporting!](docs/export_as_png.png "Make sure to uncheck 'Save color values from transparent pixels' before exporting!")
+![Image specification](docs/image_specification.png "Image specification.")
 
 ## Disclaimer
 
