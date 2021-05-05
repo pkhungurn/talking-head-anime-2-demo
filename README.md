@@ -188,6 +188,8 @@ In order for the model to work well, the input image must obey the following con
   * The head of the character should be roughly contained in the middle 128 x 128 box.
   * All pixels that do not belong to the character (i.e., background pixels) should have the alpha channel (A) being 0.
 
+Note, however, that regardless of the size of the input image, **the programs will always resize it to 256x256 and will always output a 256x256 image.** This is an intrinsic limitation of the system.
+
 ![Image specification](docs/image_specification.png "Image specification.")
 
 ## Disclaimer
