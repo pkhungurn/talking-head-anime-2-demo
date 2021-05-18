@@ -16,7 +16,7 @@ class Combiner(BatchInputModule):
                  bottleneck_image_size: int = 32,
                  bottleneck_block_count: int = 6,
                  initialization_method: str = 'he'):
-        super().__init__()
+        super().__init__(num_run_args=3)
         self.main_body = UNetModule(
             image_size=image_size,
             image_channels=2 * image_channels + pose_size,
@@ -46,9 +46,6 @@ class Combiner(BatchInputModule):
         retouch_color_change = self.retouch_color_change(y)
         final_image = retouch_alpha_mask * combined_image + (1 - retouch_alpha_mask) * retouch_color_change
         return [final_image, combined_image, combine_alpha_mask, retouch_alpha_mask, retouch_color_change]
-
-    def forward_from_batch(self, batch):
-        return self.forward(batch[0], batch[1], batch[2])
 
 
 class CombinerFactory(BatchInputModuleFactory):

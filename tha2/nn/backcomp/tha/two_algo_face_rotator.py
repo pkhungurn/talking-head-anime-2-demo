@@ -25,7 +25,7 @@ class TwoAlgoFaceRotator(BatchInputModule):
                  bottleneck_block_count: int = 6,
                  initialization_method: str = 'he',
                  align_corners: bool = True):
-        super().__init__()
+        super().__init__(num_run_args=2)
         self.align_corners = align_corners
         self.main_body = EncoderDecoderModule(
             image_size=image_size,
@@ -63,9 +63,6 @@ class TwoAlgoFaceRotator(BatchInputModule):
         resampled = grid_sample(image, grid, mode='bilinear', padding_mode='border', align_corners=self.align_corners)
 
         return [color_changed, resampled, color_change, alpha_mask, original_grid_change]
-
-    def forward_from_batch(self, batch):
-        return self.forward(batch[0], batch[1])
 
 
 class TwoAlgoFaceRotatorFactory(BatchInputModuleFactory):

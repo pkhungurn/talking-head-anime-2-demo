@@ -34,7 +34,7 @@ class EyebrowDecomposer00Args(PoserEncoderDecoder00Args):
 
 class EyebrowDecomposer00(BatchInputModule):
     def __init__(self, args: EyebrowDecomposer00Args):
-        super().__init__()
+        super().__init__(num_run_args=1)
         self.args = args
         self.body = PoserEncoderDecoder00(args)
         self.background_layer_alpha = self.args.create_alpha_block()
@@ -69,9 +69,6 @@ class EyebrowDecomposer00(BatchInputModule):
     BACKGROUND_LAYER_ALPHA_INDEX = 4
     BACKGROUND_LAYER_COLOR_CHANGE_INDEX = 5
     OUTPUT_LENGTH = 6
-
-    def forward_from_batch(self, batch: List[Tensor]):
-        return self.forward(batch[0])
 
 
 class EyebrowDecomposer00Factory(BatchInputModuleFactory):

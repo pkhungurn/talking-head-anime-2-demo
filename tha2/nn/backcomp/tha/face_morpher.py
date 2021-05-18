@@ -16,7 +16,7 @@ class FaceMorpher(BatchInputModule):
                  bottleneck_image_size: int = 32,
                  bottleneck_block_count: int = 6,
                  initialization_method: str = 'he'):
-        super().__init__()
+        super().__init__(num_run_args=2)
         self.main_body = EncoderDecoderModule(
             image_size=image_size,
             image_channels=image_channels + pose_size,
@@ -40,9 +40,6 @@ class FaceMorpher(BatchInputModule):
         alpha = self.alpha_mask(y)
         output_image = alpha * image + (1 - alpha) * color
         return [output_image, alpha, color]
-
-    def forward_from_batch(self, batch):
-        return self.forward(batch[0], batch[1])
 
 
 class FaceMorpherSpec(BatchInputModuleFactory):

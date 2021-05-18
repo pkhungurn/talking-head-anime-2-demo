@@ -8,12 +8,16 @@ from tha2.nn.base.module_factory import ModuleFactory
 
 
 class BatchInputModule(Module, ABC):
-    def __init__(self):
+    def __init__(self, num_run_args=0):
         super().__init__()
 
-    @abstractmethod
+        self.num_run_args = num_run_args
+
     def forward_from_batch(self, batch: List[Tensor]):
-        pass
+        assert len(batch) >= self.num_run_args, f"At least {self.num_run_args} arg(s) should be provided."
+        if len(batch) > self.num_run_args:
+            batch = batch[:self.num_run_args]
+        return self.forward(*batch)
 
 
 class BatchInputModuleFactory(ModuleFactory):

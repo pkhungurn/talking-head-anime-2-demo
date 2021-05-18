@@ -35,7 +35,7 @@ class EyebrowMorphingCombiner00Args(PoserEncoderDecoder00Args):
 
 class EyebrowMorphingCombiner00(BatchInputModule):
     def __init__(self, args: EyebrowMorphingCombiner00Args):
-        super().__init__()
+        super().__init__(num_run_args=3)
         self.args = args
         self.body = PoserEncoderDecoder00(args)
         self.morphed_eyebrow_layer_grid_change = self.args.create_grid_change_block()
@@ -79,9 +79,6 @@ class EyebrowMorphingCombiner00(BatchInputModule):
     WARPED_EYEBROW_LAYER_INDEX = 6
     MORPHED_EYEBROW_LAYER_GRID_CHANGE_INDEX = 7
     OUTPUT_LENGTH = 8
-
-    def forward_from_batch(self, batch: List[Tensor]):
-        return self.forward(batch[0], batch[1], batch[2])
 
 
 class EyebrowMorphingCombiner00Factory(BatchInputModuleFactory):

@@ -45,7 +45,7 @@ class FaceMorpher08Args:
 
 class FaceMorpher08(BatchInputModule):
     def __init__(self, args: FaceMorpher08Args):
-        super().__init__()
+        super().__init__(num_run_args=2)
         self.args = args
         self.num_levels = int(math.log2(args.image_size // args.bottleneck_image_size)) + 1
 
@@ -181,9 +181,6 @@ class FaceMorpher08(BatchInputModule):
 
     def apply_color_change(self, alpha, color_change, image: Tensor) -> Tensor:
         return color_change * alpha + image * (1 - alpha)
-
-    def forward_from_batch(self, batch: List[Tensor]):
-        return self.forward(batch[0], batch[1])
 
 
 class FaceMorpher08Factory(BatchInputModuleFactory):
