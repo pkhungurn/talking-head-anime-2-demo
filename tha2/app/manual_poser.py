@@ -263,22 +263,16 @@ class MainFrame(wx.Frame):
         file_dialog = wx.FileDialog(self, "Choose an image", dir_name, "", "*.png", wx.FD_OPEN)
         if file_dialog.ShowModal() == wx.ID_OK:
             image_file_name = os.path.join(file_dialog.GetDirectory(), file_dialog.GetFilename())
-            try:
-                pil_image = resize_PIL_image(extract_PIL_image_from_filelike(image_file_name))
-                w, h = pil_image.size
-                if pil_image.mode != 'RGBA':
-                    self.source_image_string = "Image must have alpha channel!"
-                    self.wx_source_image = None
-                    self.torch_source_image = None
-                else:
-                    self.wx_source_image = wx.Bitmap.FromBufferRGBA(w, h, pil_image.convert("RGBA").tobytes())
-                    self.torch_source_image = extract_pytorch_image_from_PIL_image(pil_image).to(self.device)
-
-                self.Refresh()
-            except:
-                message_dialog = wx.MessageDialog(self, "Could not load image " + image_file_name, "Poser", wx.OK)
-                message_dialog.ShowModal()
-                message_dialog.Destroy()
+            pil_image = resize_PIL_image(extract_PIL_image_from_filelike(image_file_name))
+            w, h = pil_image.size
+            if pil_image.mode != 'RGBA':
+                self.source_image_string = "Image must have alpha channel!"
+                self.wx_source_image = None
+                self.torch_source_image = None
+            else:
+                self.wx_source_image = wx.Bitmap.FromBufferRGBA(w, h, pil_image.convert("RGBA").tobytes())
+                self.torch_source_image = extract_pytorch_image_from_PIL_image(pil_image).to(self.device)
+            self.Refresh()
         file_dialog.Destroy()
 
     def paint_source_image_panel(self, event: wx.Event):

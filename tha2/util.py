@@ -138,11 +138,7 @@ def rgba_to_numpy_image(torch_image: Tensor, min_pixel_value=-1.0, max_pixel_val
 
 
 def extract_PIL_image_from_filelike(file):
-    try:
-        pil_image = PIL.Image.open(file)
-    except Exception as e:
-        raise RuntimeError(file)
-    return pil_image
+    return PIL.Image.open(file)
 
 
 def extract_pytorch_image_from_filelike(file, scale=2.0, offset=-1.0):
