@@ -5,6 +5,7 @@ import socket
 import sys
 import threading
 import time
+from typing import Optional
 
 sys.path.append(os.getcwd())
 
@@ -147,7 +148,7 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_TIMER, self.update_capture_panel, id=self.capture_timer.GetId())
 
         self.animation_timer = wx.Timer(self, wx.ID_ANY)
-        self.Bind(wx.EVT_TIMER, self.update_result_image_panel, id=self.animation_timer.GetId())
+        self.Bind(wx.EVT_TIMER, self.update_result_image_bitmap, id=self.animation_timer.GetId())
 
         self.wx_source_image = None
         self.torch_source_image = None
@@ -158,6 +159,10 @@ class MainFrame(wx.Frame):
         self.animation_timer.Start(33)
 
         self.source_image_string = "Nothing yet!"
+        self.source_image_bitmap = wx.Bitmap(256, 256)
+        self.result_image_bitmap = wx.Bitmap(256, 256)
+        self.update_source_image_bitmap()
+        self.update_result_image_bitmap(None)
 
     def on_close(self, event: wx.Event):
         self.client_thread.should_terminate = True
@@ -351,18 +356,18 @@ class MainFrame(wx.Frame):
         return int(max(0.0, min(1.0, x)) * 100)
 
     def paint_source_image_panel(self, event: wx.Event):
+        wx.BufferedPaintDC(self.source_image_panel, self.source_image_bitmap)
+
+    def update_source_image_bitmap(self):
+        dc = wx.MemoryDC()
+        dc.SelectObject(self.source_image_bitmap)
         if self.wx_source_image is None:
-            self.draw_source_image_string(self.source_image_panel, use_paint_dc=True)
+            self.draw_source_image_string_to_dc(dc)
         else:
-            dc = wx.PaintDC(self.source_image_panel)
             dc.Clear()
             dc.DrawBitmap(self.wx_source_image, 0, 0, True)
 
-    def draw_source_image_string(self, widget, use_paint_dc: bool = True):
-        if use_paint_dc:
-            dc = wx.PaintDC(widget)
-        else:
-            dc = wx.ClientDC(widget)
+    def draw_source_image_string_to_dc(self, dc: wx.DC):
         dc.Clear()
         font = wx.Font(wx.FontInfo(14).Family(wx.FONTFAMILY_SWISS))
         dc.SetFont(font)
@@ -370,9 +375,9 @@ class MainFrame(wx.Frame):
         dc.DrawText(self.source_image_string, 128 - w // 2, 128 - h // 2)
 
     def paint_result_image_panel(self, event: wx.Event):
-        self.last_pose = None
+        wx.BufferedPaintDC(self.result_image_panel, self.result_image_bitmap)
 
-    def update_result_image_panel(self, event: wx.Event):
+    def update_result_image_bitmap(self, event: Optional[wx.Event]):
         tic = time.perf_counter()
 
         ifacialmocap_pose = self.capture_data.read_data()
@@ -385,7 +390,9 @@ class MainFrame(wx.Frame):
         self.last_output_index = self.output_index_choice.GetSelection()
 
         if self.torch_source_image is None:
-            self.draw_source_image_string(self.result_image_panel, use_paint_dc=False)
+            dc = wx.MemoryDC()
+            dc.SelectObject(self.result_image_bitmap)
+            self.draw_source_image_string_to_dc(dc)
             return
 
         pose = torch.tensor(current_pose, device=self.device)
@@ -413,7 +420,8 @@ class MainFrame(wx.Frame):
             numpy_image[:, :, 3].tobytes())
         wx_bitmap = wx_image.ConvertToBitmap()
 
-        dc = wx.ClientDC(self.result_image_panel)
+        dc = wx.MemoryDC()
+        dc.SelectObject(self.result_image_bitmap)
         dc.Clear()
         dc.DrawBitmap(wx_bitmap, (256 - numpy_image.shape[0]) // 2, (256 - numpy_image.shape[1]) // 2, True)
 
@@ -421,6 +429,8 @@ class MainFrame(wx.Frame):
         elapsed_time = toc - tic
         fps = min(1.0 / elapsed_time, 1000.0 / 33.0)
         self.fps_text.SetLabelText("FPS = %0.2f" % fps)
+
+        self.Refresh()
 
     def blend_with_background(self, numpy_image, background):
         alpha = numpy_image[:, :, 3:4]
@@ -442,7 +452,7 @@ class MainFrame(wx.Frame):
             else:
                 self.wx_source_image = wx.Bitmap.FromBufferRGBA(w, h, pil_image.convert("RGBA").tobytes())
                 self.torch_source_image = extract_pytorch_image_from_PIL_image(pil_image).to(self.device)
-
+            self.update_source_image_bitmap()
             self.Refresh()
         file_dialog.Destroy()
 
