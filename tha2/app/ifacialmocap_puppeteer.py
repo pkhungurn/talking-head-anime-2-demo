@@ -1,10 +1,13 @@
 import errno
 import json
 import os
+import queue
 import socket
 import sys
 import threading
 import time
+from multiprocessing import Value, Process, Queue
+from typing import Optional
 
 sys.path.append(os.getcwd())
 
@@ -18,52 +21,35 @@ from tha2.mocap.ifacialmocap_pose_converter import IFacialMocapPoseConverter
 from tha2.util import extract_PIL_image_from_filelike, resize_PIL_image, extract_pytorch_image_from_PIL_image, convert_output_image_from_torch_to_numpy
 
 
-class CaptureData:
+def create_default_blender_data():
+    data = {}
+
+    for blendshape_name in BLENDSHAPE_NAMES:
+        data[blendshape_name] = 0.0
+
+    data[HEAD_BONE_X] = 0.0
+    data[HEAD_BONE_Y] = 0.0
+    data[HEAD_BONE_Z] = 0.0
+    data[HEAD_BONE_QUAT] = [0.0, 0.0, 0.0, 1.0]
+
+    data[LEFT_EYE_BONE_X] = 0.0
+    data[LEFT_EYE_BONE_Y] = 0.0
+    data[LEFT_EYE_BONE_Z] = 0.0
+    data[LEFT_EYE_BONE_QUAT] = [0.0, 0.0, 0.0, 1.0]
+
+    data[RIGHT_EYE_BONE_X] = 0.0
+    data[RIGHT_EYE_BONE_Y] = 0.0
+    data[RIGHT_EYE_BONE_Z] = 0.0
+    data[RIGHT_EYE_BONE_QUAT] = [0.0, 0.0, 0.0, 1.0]
+
+    return data
+
+
+class ClientProcess(Process):
     def __init__(self):
-        self.lock = threading.Lock()
-        self.data = self.create_default_data()
-
-    def write_data(self, data):
-        self.lock.acquire()
-        self.data = data
-        self.lock.release()
-
-    def read_data(self):
-        self.lock.acquire()
-        output = self.data
-        self.lock.release()
-        return output
-
-    @staticmethod
-    def create_default_data():
-        data = {}
-
-        for blendshape_name in BLENDSHAPE_NAMES:
-            data[blendshape_name] = 0.0
-
-        data[HEAD_BONE_X] = 0.0
-        data[HEAD_BONE_Y] = 0.0
-        data[HEAD_BONE_Z] = 0.0
-        data[HEAD_BONE_QUAT] = [0.0, 0.0, 0.0, 1.0]
-
-        data[LEFT_EYE_BONE_X] = 0.0
-        data[LEFT_EYE_BONE_Y] = 0.0
-        data[LEFT_EYE_BONE_Z] = 0.0
-        data[LEFT_EYE_BONE_QUAT] = [0.0, 0.0, 0.0, 1.0]
-
-        data[RIGHT_EYE_BONE_X] = 0.0
-        data[RIGHT_EYE_BONE_Y] = 0.0
-        data[RIGHT_EYE_BONE_Z] = 0.0
-        data[RIGHT_EYE_BONE_QUAT] = [0.0, 0.0, 0.0, 1.0]
-
-        return data
-
-
-class ClientThread(threading.Thread):
-    def __init__(self, capture_data: CaptureData):
         super().__init__()
-        self.capture_data = capture_data
-        self.should_terminate = False
+        self.queue = Queue()
+        self.should_terminate = Value('b', False)
         self.address = "0.0.0.0"
         self.port = 50002
 
@@ -72,7 +58,7 @@ class ClientThread(threading.Thread):
         self.socket.setblocking(False)
         self.socket.bind((self.address, self.port))
         while True:
-            if self.should_terminate:
+            if self.should_terminate.value:
                 break
             try:
                 socket_bytes = self.socket.recv(8192)
@@ -85,7 +71,11 @@ class ClientThread(threading.Thread):
             socket_string = socket_bytes.decode("utf-8")
             blender_data = json.loads(socket_string)
             data = self.convert_from_blender_data(blender_data)
-            self.capture_data.write_data(data)
+            try:
+                self.queue.put_nowait(data)
+            except queue.Full:
+                pass
+        self.queue.close()
         self.socket.close()
 
     @staticmethod
@@ -138,8 +128,8 @@ class MainFrame(wx.Frame):
         self.pose_converter = pose_converter
         self.poser = poser
         self.device = device
-        self.capture_data = CaptureData()
-        self.client_thread = ClientThread(self.capture_data)
+        self.client_process = ClientProcess()
+
         self.create_ui()
         self.Bind(wx.EVT_CLOSE, self.on_close)
 
@@ -147,21 +137,30 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_TIMER, self.update_capture_panel, id=self.capture_timer.GetId())
 
         self.animation_timer = wx.Timer(self, wx.ID_ANY)
-        self.Bind(wx.EVT_TIMER, self.update_result_image_panel, id=self.animation_timer.GetId())
+        self.Bind(wx.EVT_TIMER, self.update_result_image_bitmap, id=self.animation_timer.GetId())
 
+        self.blender_data = create_default_blender_data()
         self.wx_source_image = None
         self.torch_source_image = None
         self.last_pose = None
-
-        self.client_thread.start()
-        self.capture_timer.Start(33)
-        self.animation_timer.Start(33)
+        self.last_output_index = None
 
         self.source_image_string = "Nothing yet!"
+        self.source_image_bitmap = wx.Bitmap(256, 256)
+        self.result_image_bitmap = wx.Bitmap(256, 256)
+        self.update_source_image_bitmap()
+        self.update_result_image_bitmap(None)
+
+        self.client_process.start()
+        self.capture_timer.Start(30)
+        self.animation_timer.Start(30)
+
+    def on_erase_background(self, event: wx.Event):
+        pass
 
     def on_close(self, event: wx.Event):
-        self.client_thread.should_terminate = True
-        self.client_thread.join()
+        self.client_process.should_terminate.value = True
+        self.client_process.join()
         self.capture_timer.Stop()
         self.animation_timer.Stop()
         event.Skip()
@@ -181,6 +180,7 @@ class MainFrame(wx.Frame):
 
             self.source_image_panel = wx.Panel(self.input_panel, size=(256, 256), style=wx.SIMPLE_BORDER)
             self.source_image_panel.Bind(wx.EVT_PAINT, self.paint_source_image_panel)
+            self.source_image_panel.Bind(wx.EVT_ERASE_BACKGROUND, self.on_erase_background)
             self.input_panel_sizer.Add(self.source_image_panel, 0, wx.FIXED_MINSIZE)
 
             self.load_image_button = wx.Button(self.input_panel, wx.ID_ANY, "Load Image")
@@ -201,6 +201,7 @@ class MainFrame(wx.Frame):
 
             self.result_image_panel = wx.Panel(self.animation_left_panel, size=(256, 256), style=wx.SIMPLE_BORDER)
             self.result_image_panel.Bind(wx.EVT_PAINT, self.paint_result_image_panel)
+            self.result_image_panel.Bind(wx.EVT_ERASE_BACKGROUND, self.on_erase_background)
             self.animation_left_panel_sizer.Add(self.result_image_panel, 0, wx.FIXED_MINSIZE)
 
             self.output_index_choice = wx.Choice(self.animation_left_panel,
@@ -336,8 +337,18 @@ class MainFrame(wx.Frame):
     def paint_capture_panel(self, event: wx.Event):
         self.update_capture_panel(event)
 
+    def read_blender_data(self):
+        try:
+            new_blender_data = self.blender_data
+            while not self.client_process.should_terminate.value and not self.client_process.queue.empty():
+                new_blender_data = self.client_process.queue.get_nowait()
+            self.blender_data = new_blender_data
+        except queue.Empty:
+            pass
+        return self.blender_data
+
     def update_capture_panel(self, event: wx.Event):
-        data = self.capture_data.read_data()
+        data = self.read_blender_data()
         for blendshape_name in BLENDSHAPE_NAMES:
             value = data[blendshape_name]
             self.blendshape_gauges[blendshape_name].SetValue(MainFrame.convert_to_100(value))
@@ -351,18 +362,18 @@ class MainFrame(wx.Frame):
         return int(max(0.0, min(1.0, x)) * 100)
 
     def paint_source_image_panel(self, event: wx.Event):
+        wx.BufferedPaintDC(self.source_image_panel, self.source_image_bitmap)
+
+    def update_source_image_bitmap(self):
+        dc = wx.MemoryDC()
+        dc.SelectObject(self.source_image_bitmap)
         if self.wx_source_image is None:
-            self.draw_source_image_string(self.source_image_panel, use_paint_dc=True)
+            self.draw_source_image_string_to_dc(dc)
         else:
-            dc = wx.PaintDC(self.source_image_panel)
             dc.Clear()
             dc.DrawBitmap(self.wx_source_image, 0, 0, True)
 
-    def draw_source_image_string(self, widget, use_paint_dc: bool = True):
-        if use_paint_dc:
-            dc = wx.PaintDC(widget)
-        else:
-            dc = wx.ClientDC(widget)
+    def draw_source_image_string_to_dc(self, dc: wx.DC):
         dc.Clear()
         font = wx.Font(wx.FontInfo(14).Family(wx.FONTFAMILY_SWISS))
         dc.SetFont(font)
@@ -370,12 +381,12 @@ class MainFrame(wx.Frame):
         dc.DrawText(self.source_image_string, 128 - w // 2, 128 - h // 2)
 
     def paint_result_image_panel(self, event: wx.Event):
-        self.last_pose = None
+        wx.BufferedPaintDC(self.result_image_panel, self.result_image_bitmap)
 
-    def update_result_image_panel(self, event: wx.Event):
+    def update_result_image_bitmap(self, event: Optional[wx.Event]):
         tic = time.perf_counter()
 
-        ifacialmocap_pose = self.capture_data.read_data()
+        ifacialmocap_pose = self.read_blender_data()
         current_pose = self.pose_converter.convert(ifacialmocap_pose)
         if self.last_pose is not None \
                 and self.last_pose == current_pose \
@@ -385,7 +396,9 @@ class MainFrame(wx.Frame):
         self.last_output_index = self.output_index_choice.GetSelection()
 
         if self.torch_source_image is None:
-            self.draw_source_image_string(self.result_image_panel, use_paint_dc=False)
+            dc = wx.MemoryDC()
+            dc.SelectObject(self.result_image_bitmap)
+            self.draw_source_image_string_to_dc(dc)
             return
 
         pose = torch.tensor(current_pose, device=self.device)
@@ -413,7 +426,8 @@ class MainFrame(wx.Frame):
             numpy_image[:, :, 3].tobytes())
         wx_bitmap = wx_image.ConvertToBitmap()
 
-        dc = wx.ClientDC(self.result_image_panel)
+        dc = wx.MemoryDC()
+        dc.SelectObject(self.result_image_bitmap)
         dc.Clear()
         dc.DrawBitmap(wx_bitmap, (256 - numpy_image.shape[0]) // 2, (256 - numpy_image.shape[1]) // 2, True)
 
@@ -421,6 +435,8 @@ class MainFrame(wx.Frame):
         elapsed_time = toc - tic
         fps = min(1.0 / elapsed_time, 1000.0 / 33.0)
         self.fps_text.SetLabelText("FPS = %0.2f" % fps)
+
+        self.Refresh()
 
     def blend_with_background(self, numpy_image, background):
         alpha = numpy_image[:, :, 3:4]
@@ -442,7 +458,7 @@ class MainFrame(wx.Frame):
             else:
                 self.wx_source_image = wx.Bitmap.FromBufferRGBA(w, h, pil_image.convert("RGBA").tobytes())
                 self.torch_source_image = extract_pytorch_image_from_PIL_image(pil_image).to(self.device)
-
+            self.update_source_image_bitmap()
             self.Refresh()
         file_dialog.Destroy()
 
