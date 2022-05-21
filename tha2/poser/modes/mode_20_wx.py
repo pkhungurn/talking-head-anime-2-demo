@@ -197,16 +197,16 @@ class IFacialMocapPoseConverter20(IFacialMocapPoseConverter):
 
         # Iris rotation
         if True:
-            eye_rotation_y = (ifacialmocap_pose[EYE_LOOK_IN_LEFT] -
-                              ifacialmocap_pose[EYE_LOOK_OUT_LEFT] -
-                              ifacialmocap_pose[EYE_LOOK_IN_RIGHT] +
-                              ifacialmocap_pose[EYE_LOOK_OUT_RIGHT]) / 2.0 * self.args.eye_rotation_factor
+            eye_rotation_y = (ifacialmocap_pose[EYE_LOOK_IN_LEFT] 
+                              - ifacialmocap_pose[EYE_LOOK_OUT_LEFT] 
+                              - ifacialmocap_pose[EYE_LOOK_IN_RIGHT] 
+                              + ifacialmocap_pose[EYE_LOOK_OUT_RIGHT]) / 2.0 * self.args.eye_rotation_factor
             pose[self.iris_rotation_y_index] = clamp(eye_rotation_y, -1.0, 1.0)
 
             eye_rotation_x = (ifacialmocap_pose[EYE_LOOK_UP_LEFT]
                               + ifacialmocap_pose[EYE_LOOK_UP_RIGHT]
                               - ifacialmocap_pose[EYE_LOOK_DOWN_RIGHT]
-                              + ifacialmocap_pose[EYE_LOOK_DOWN_LEFT]) / 2.0 * self.args.eye_rotation_factor
+                              - ifacialmocap_pose[EYE_LOOK_DOWN_LEFT]) / 2.0 * self.args.eye_rotation_factor
             pose[self.iris_rotation_x_index] = clamp(eye_rotation_x, -1.0, 1.0)
 
         # Iris size
