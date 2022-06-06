@@ -49,6 +49,17 @@ following commands:
 > conda install matplotlib
 ```
 
+**Note:** You may find that the particular versions of Python (3.8) and CUDA Toolkit (10.2) might not work for your GPU. When this happens, replace these versions with those that work with your hardware. The command would become:
+```
+> conda create -n talking-head-anime-2-demo python=[YOUR-PYTHON-VERSION]
+> conda activate talking-head-anime-2-demo
+> conda install pytorch torchvision cudatoolkit=[YOUR-CUDA-TOOLKIT-VERSION] -c pytorch
+> conda install scipy
+> pip install wxPython
+> conda install matplotlib
+```
+In general, the latest version of Python and the latest version of CUDA Toolkit shown on [PyTorch's website](http://pytorch.org) would work.
+
 To run the Jupyter notebook version of the `manual_poser`, you also need:
 
   * Jupyter Notebook >= 6.2.0
