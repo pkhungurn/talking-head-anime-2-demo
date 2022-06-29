@@ -203,6 +203,24 @@ Note, however, that regardless of the size of the input image, **the programs wi
 
 ![Image specification](docs/image_specification.png "Image specification.")
 
+## Citation
+
+If your academic work benefits from the code in this repository, please cite the project's web page as follows:
+
+> Pramook Khungurn. **Talking Head Anime from a Single Image 2: More Expressive.** http://pkhungurn.github.io/talking-head-anime-2/, 2021. Accessed: YYYY-MM-DD.
+
+You can also used the following BibTex entry:
+
+```
+@misc{Khungurn:2021,
+    author = {Pramook Khungurn},
+    title = {Talking Head Anime from a Single Image 2: More Expressive},
+    howpublished = {\url{http://pkhungurn.github.io/talking-head-anime-2/}},
+    year = 2021,
+    note = {Accessed: YYYY-MM-DD},
+}
+```
+
 ## Disclaimer
 
 While the author is an employee of Google Japan, this software is not Google's product and is not supported by Google.
