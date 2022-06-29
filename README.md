@@ -226,7 +226,7 @@ You can also used the following BibTex entry:
 While the author is an employee of Google Japan, this software is not Google's product and is not supported by Google.
 
 The copyright of this software belongs to me as I have requested it using the 
-[IARC process](https://opensource.google/docs/iarc/). However, Google might claim the rights to the intellectual
+[IARC process](https://opensource.google/documentation/reference/releasing#iarc). However, Google might claim the rights to the intellectual
 property of this invention.
 
 The code is released under the [MIT license](https://github.com/pkhungurn/talking-head-anime-2-demo/blob/master/LICENSE).
